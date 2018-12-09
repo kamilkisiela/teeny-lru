@@ -1,6 +1,7 @@
 	class LRU {
 		constructor (max, ttl) {
 			this.max = max;
+			this.size = 0;
 			this.ttl = ttl;
 
 			return this.clear();
@@ -14,7 +15,8 @@
 
 			this.first = empty;
 			this.last = empty;
-			this.registry = new Map();
+			this.registry = {};
+			this.size = 0;
 			this.slots = JSON.parse(`{${x.map(g => `${g}: {"expiry":-1,"next":null,"previous":null,"value":null}`).join(",")}}`);
 			this.empty = Object.keys(this.slots).reverse();
 
@@ -33,7 +35,7 @@
 			let result;
 
 			if (this.has(key) === true) {
-				const item = this.slots[this.registry.get(key)];
+				const item = this.slots[this.registry[key]];
 
 				if (item.expiry === -1 || item.expiry > Date.now()) {
 					result = item.value;
@@ -47,20 +49,24 @@
 		}
 
 		has (key) {
-			return this.registry.has(key);
+			return key in this.registry;
 		}
 
 		remove (key, bypass = false) {
-			if (bypass === true || this.has(key)) {
-				const slot = this.registry.get(key),
+			if (bypass === true || this.has(key) === true) {
+				const slot = this.registry[key],
 					item = this.slots[slot];
 
+				delete this.registry[key];
+				this.empty.push(slot);
+				this.size--;
+
 				if (item.previous !== empty) {
-					this.slots[this.registry.get(item.previous)].next = item.next;
+					this.slots[this.registry[item.previous]].next = item.next;
 				}
 
 				if (item.next !== empty) {
-					this.slots[this.registry.get(item.next)].previous = item.previous;
+					this.slots[this.registry[item.next]].previous = item.previous;
 				}
 
 				if (this.first === key) {
@@ -75,9 +81,6 @@
 				item.next = empty;
 				item.previous = empty;
 				item.value = empty;
-
-				this.registry.delete(key);
-				this.empty.push(slot);
 			}
 
 			return this;
@@ -85,14 +88,14 @@
 
 		set (key, value, bypass = false) {
 			if (bypass === true || this.has(key) === true) {
-				const item = this.slots[this.registry.get(key)];
+				const item = this.slots[this.registry[key]];
 
 				item.value = value;
 
 				if (this.first !== key) {
 					const n = item.next,
 						p = item.previous,
-						f = this.slots[this.registry.get(this.first)];
+						f = this.slots[this.registry[this.first]];
 
 					item.next = empty;
 					item.previous = this.first;
@@ -104,10 +107,10 @@
 
 					if (n !== empty && n !== this.first) {
 						if (p !== empty) {
-							this.slots[this.registry.get(p)].next = n;
+							this.slots[this.registry[p]].next = n;
 						}
 
-						this.slots[this.registry.get(n)].previous = p;
+						this.slots[this.registry[n]].previous = p;
 					}
 
 					if (this.last === key) {
@@ -117,14 +120,14 @@
 					this.first = key;
 				}
 			} else {
-				if (this.empty.length === 0) {
+				if (this.size === this.max) {
 					this.evict();
 				}
 
 				const slot = this.empty.pop(),
 					item = this.slots[slot];
 
-				this.registry.set(key, slot);
+				this.registry[key] = slot;
 				item.expiry = this.ttl > 0 ? new Date().getTime() + this.ttl : -1;
 				item.next = empty;
 				item.previous = this.first;
@@ -133,10 +136,11 @@
 				if (this.last === empty) {
 					this.last = key;
 				} else {
-					this.slots[this.registry.get(this.first)].next = key;
+					this.slots[this.registry[this.first]].next = key;
 				}
 
 				this.first = key;
+				this.size++;
 			}
 
 			return this;
