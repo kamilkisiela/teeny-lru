@@ -39,7 +39,7 @@
 					result = item.value;
 					this.set(key, result, true);
 				} else {
-					this.remove(key);
+					this.remove(key, true);
 				}
 			}
 
@@ -52,10 +52,30 @@
 
 		remove (key, bypass = false) {
 			if (bypass === true || this.has(key)) {
-				const slot = this.registry.get(key);//,
-				//item = this.slots[slot];
+				const slot = this.registry.get(key),
+					item = this.slots[slot];
 
-				this.slots[slot] = empty;
+				if (item.previous !== empty) {
+					this.slots[this.registry.get(item.previous)].next = item.next;
+				}
+
+				if (item.next !== empty) {
+					this.slots[this.registry.get(item.next)].previous = item.previous;
+				}
+
+				if (this.first === key) {
+					this.first = item.previous;
+				}
+
+				if (this.last === key) {
+					this.last = item.next;
+				}
+
+				item.expiry = -1;
+				item.next = empty;
+				item.previous = empty;
+				item.value = empty;
+
 				this.registry.delete(key);
 				this.empty.push(slot);
 			}
@@ -101,15 +121,14 @@
 					this.evict();
 				}
 
-				const slot = this.empty.pop();
+				const slot = this.empty.pop(),
+					item = this.slots[slot];
 
 				this.registry.set(key, slot);
-				this.slots[slot] = {
-					expiry: this.ttl > 0 ? new Date().getTime() + this.ttl : -1,
-					next: empty,
-					previous: this.first,
-					value: value
-				};
+				item.expiry = this.ttl > 0 ? new Date().getTime() + this.ttl : -1;
+				item.next = empty;
+				item.previous = this.first;
+				item.value = value;
 
 				if (this.last === empty) {
 					this.last = key;
