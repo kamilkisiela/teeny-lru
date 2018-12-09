@@ -1,18 +1,16 @@
 	class LRU {
 		constructor (max, ttl) {
-			this.cache = {};
+			this.cache = new Map();
 			this.first = empty;
 			this.last = empty;
-			this.length = 0;
 			this.max = max;
 			this.ttl = ttl;
 		}
 
 		clear () {
-			this.cache = {};
+			this.cache.clear();
 			this.first = empty;
 			this.last = empty;
-			this.length = 0;
 
 			return this;
 		}
@@ -22,16 +20,14 @@
 		}
 
 		evict () {
-			this.remove(this.last, true);
-
-			return this;
+			return this.remove(this.last, true);
 		}
 
 		get (key) {
 			let result;
 
 			if (this.has(key) === true) {
-				const item = this.cache[key];
+				const item = this.cache.get(key);
 
 				if (item.expiry === -1 || item.expiry > Date.now()) {
 					result = item.value;
@@ -45,23 +41,22 @@
 		}
 
 		has (key) {
-			return key in this.cache;
+			return this.cache.has(key);
 		}
 
 		remove (key, bypass = false) {
 			let result;
 
 			if (bypass === true || this.has(key) === true) {
-				result = this.cache[key];
-				delete this.cache[key];
-				this.length--;
+				result = this.cache.get(key);
+				this.cache.delete(key);
 
 				if (result.previous !== empty) {
-					this.cache[result.previous].next = result.next;
+					this.cache.set(result.previous, Object.assign(this.cache.get(result.previous), {next: result.next}));
 				}
 
 				if (result.next !== empty) {
-					this.cache[result.next].previous = result.previous;
+					this.cache.set(result.next, Object.assign(this.cache.get(result.next), {previous: result.previous}));
 				}
 
 				if (this.first === key) {
@@ -78,14 +73,14 @@
 
 		set (key, value, bypass = false) {
 			if (bypass === true || this.has(key) === true) {
-				const item = this.cache[key];
+				const item = this.cache.get(key);
 
 				item.value = value;
 
 				if (this.first !== key) {
 					const n = item.next,
 						p = item.previous,
-						f = this.cache[this.first];
+						f = this.cache.get(this.first);
 
 					item.next = empty;
 					item.previous = this.first;
@@ -95,35 +90,38 @@
 						f.previous = empty;
 					}
 
+					this.cache.set(this.first, f);
+
 					if (n !== empty && n !== this.first) {
 						if (p !== empty) {
-							this.cache[p].next = n;
+							this.cache.set(p, Object.assign(this.cache.get(p), {next: n}));
 						}
 
-						this.cache[n].previous = p;
+						this.cache.set(n, Object.assign(this.cache.get(n), {previous: p}));
 					}
 
 					if (this.last === key) {
 						this.last = n;
 					}
 				}
+
+				this.cache.set(key, item);
 			} else {
-				if (this.length === this.max) {
+				if (this.cache.size === this.max) {
 					this.evict();
 				}
 
-				this.length++;
-				this.cache[key] = {
+				this.cache.set(key, {
 					expiry: this.ttl > 0 ? new Date().getTime() + this.ttl : -1,
 					next: empty,
 					previous: this.first,
 					value: value
-				};
+				});
 
-				if (this.length === 1) {
+				if (this.cache.size === 1) {
 					this.last = key;
 				} else {
-					this.cache[this.first].next = key;
+					this.cache.set(this.first, Object.assign(this.cache.get(this.first), {next: key}));
 				}
 			}
 
