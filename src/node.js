@@ -1,8 +1,9 @@
 	class LRUNode {
-		constructor (arg, expiry = -1, prev = null, next = null) {
+		constructor (key, value, expiry = -1, prev = null, next = null) {
 			this.expiry = expiry;
-			this.prev = prev;
+			this.key = key;
 			this.next = next;
-			this.value = arg;
+			this.prev = prev;
+			this.value = value;
 		}
 	}
