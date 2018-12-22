@@ -101,6 +101,8 @@
 					if (this.last === item) {
 						this.last = p;
 					}
+
+					this.first = item;
 				}
 			} else {
 				if (this.length === this.max) {
@@ -115,9 +117,9 @@
 				} else {
 					this.first.prev = item;
 				}
-			}
 
-			this.first = item;
+				this.first = item;
+			}
 
 			return this;
 		}
