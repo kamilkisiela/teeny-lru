@@ -107,12 +107,7 @@
 				}
 
 				this.length++;
-				this.cache[key] = {
-					expiry: this.ttl > 0 ? new Date().getTime() + this.ttl : -1,
-					prev: empty,
-					next: this.first,
-					value: value
-				};
+				this.cache[key] = new LRUNode(value, this.ttl > 0 ? new Date().getTime() + this.ttl : -1, empty, this.first);
 
 				if (this.length === 1) {
 					this.last = key;
