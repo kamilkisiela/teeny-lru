@@ -106,7 +106,7 @@
 				}
 			} else {
 				if (this.length === this.max) {
-					this.evict();
+					this.remove(this.last.key, true);
 				}
 
 				this.length++;
