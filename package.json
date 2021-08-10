@@ -1,52 +1,51 @@
 {
-  "name": "tiny-lru",
-  "description": "Tiny LRU cache for Client or Server",
-  "version": "7.0.6",
-  "homepage": "https://github.com/avoidwork/tiny-lru",
-  "author": "Jason Mulligan <jason.mulligan@avoidwork.com>",
+  "name": "teeny-lru",
+  "description": "Teeny LRU cache",
+  "version": "0.0.1",
+  "sideEffects": false,
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    },
+    "./*": {
+      "require": "./dist/*.js",
+      "import": "./dist/*.mjs"
+    }
+  },
+  "typescript": {
+    "definition": "dist/index.d.ts"
+  },
+  "homepage": "https://github.com/kamilkisiela/teeny-lru",
+  "author": "Kamil Kisiela <kamil.kisiela@gmail.com>",
   "repository": {
     "type": "git",
-    "url": "git://github.com/avoidwork/tiny-lru.git"
+    "url": "git://github.com/kamilkisiela/teeny-lru.git"
   },
   "bugs": {
-    "url": "https://github.com/avoidwork/tiny-lru/issues"
+    "url": "https://github.com/kamilkisiela/teeny-lru/issues"
   },
-  "files": [
-    "lib",
-    "*.d.ts"
-  ],
-  "license": "BSD-3-Clause",
-  "source": "src/lru.js",
-  "browser": "lib/tiny-lru.js",
-  "main": "lib/tiny-lru.cjs.js",
-  "module": "lib/tiny-lru.esm.js",
-  "types": "tiny-lru.d.ts",
+  "license": "MIT",
   "engines": {
-    "node": ">=6"
+    "node": ">=12"
   },
-  "engineStrict": true,
   "scripts": {
-    "benchmark": "node benchmark.js",
-    "changelog": "auto-changelog -p",
-    "test": "nodeunit test/lru.js",
-    "build": "rollup --config"
+    "build": "bob build --single",
+    "prepack": "bob prepack",
+    "prepublishOnly": "yarn build"
   },
-  "dependencies": {},
   "devDependencies": {
-    "auto-changelog": "^1.16.2",
-    "nodeunit": "^0.11.3",
-    "precise": "^1.1.0",
-    "rollup": "^2.11.2",
-    "rollup-plugin-terser": "^6.1.0"
+    "bob-the-bundler": "1.5.1",
+    "typescript": "4.3.5"
   },
   "keywords": [
     "LRU",
     "cache",
+    "teeny",
     "tiny",
-    "client",
-    "server",
-    "least",
-    "recently",
-    "used"
+    "lru-cache"
   ]
 }

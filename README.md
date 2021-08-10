@@ -1,21 +1,9 @@
-# Tiny LRU
+# Teeny LRU
 
-Least Recently Used cache for Client or Server.
+Least Recently Used cache
 
-[![build status](https://secure.travis-ci.org/avoidwork/tiny-lru.svg)](http://travis-ci.org/avoidwork/tiny-lru)
-
-```javascript
+```typescript
 const cache = lru(max, ttl = 0);
-```
-
-Lodash provides a `memoize` function with a cache that can be swapped out as long as it implements the right interface.
-See the [lodash docs](https://lodash.com/docs#memoize) for more on `memoize`.
-
-#### Example
-```javascript
-_.memoize.Cache = lru().constructor;
-const memoized = _.memoize(myFunc);
-memoized.cache.max = 10;
 ```
 
 ## clear
@@ -180,5 +168,5 @@ cache.ttl = 3e4;
 ```
 
 ## License
-Copyright (c) 2019 Jason Mulligan
-Licensed under the BSD-3 license.
+Copyright (c) 2021 Kamil Kisiela
+Licensed under the MIT license.
