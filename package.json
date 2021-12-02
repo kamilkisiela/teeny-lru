@@ -1,7 +1,7 @@
 {
   "name": "teeny-lru",
   "description": "Teeny LRU cache",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "sideEffects": false,
   "main": "dist/index.js",
   "module": "dist/index.mjs",
