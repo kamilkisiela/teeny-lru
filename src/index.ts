@@ -6,145 +6,219 @@ interface Item<T> {
   expiry: number;
 }
 
-export class LRU<TValue> {
-  private first: Item<TValue> | null = null;
-  private items: { [key: string]: Item<TValue> };
-  private last: Item<TValue> | null = null;
-  private ttl: number;
-  private max: number;
-  private size = 0;
+function isStale<T>(item: Item<T>): boolean {
+  return item.expiry <= Date.now();
+}
 
-  constructor({ max = 0, ttl = 0 }: { max?: number; ttl?: number }) {
-    if (isNaN(max) || max < 0) {
-      throw new TypeError("Invalid max value");
+interface Store<TValue> {
+  first: Item<TValue> | null;
+  items: { [key: string]: Item<TValue> };
+  last: Item<TValue> | null;
+  ttl: number;
+  max: number;
+  size: number;
+  onDispose(key: string, value: TValue): void;
+}
+
+interface LRU<TValue> {
+  has(key: string): boolean;
+  clear(): void;
+  delete(key: string): void;
+  evict(): void;
+  get(key: string): TValue | undefined;
+  keys(): string[];
+  set(key: string, value: TValue, bypass?: boolean): void;
+  size(): number;
+  prune(): void;
+}
+
+function has<T>(store: Store<T>, key: string): boolean {
+  return key in store.items;
+}
+
+function clear<T>(store: Store<T>) {
+  store.first = null;
+  store.items = Object.create(null);
+  store.last = null;
+  store.size = 0;
+}
+
+function del<T>(store: Store<T>, key: string) {
+  if (has(store, key)) {
+    const item = store.items[key];
+
+    store.onDispose(key, item.value);
+
+    delete store.items[key];
+    store.size--;
+
+    if (item.prev !== null) {
+      item.prev.next = item.next;
     }
 
-    if (isNaN(ttl) || ttl < 0) {
-      throw new TypeError("Invalid ttl value");
+    if (item.next !== null) {
+      item.next.prev = item.prev;
     }
 
-    this.max = max;
-    this.ttl = ttl;
-  }
-
-  has(key: string): boolean {
-    return key in this.items;
-  }
-
-  clear() {
-    this.first = null;
-    this.items = Object.create(null);
-    this.last = null;
-    this.size = 0;
-  }
-
-  delete(key: string) {
-    if (this.has(key)) {
-      const item = this.items[key];
-
-      delete this.items[key];
-      this.size--;
-
-      if (item.prev !== null) {
-        item.prev.next = item.next;
-      }
-
-      if (item.next !== null) {
-        item.next.prev = item.prev;
-      }
-
-      if (this.first === item) {
-        this.first = item.next;
-      }
-
-      if (this.last === item) {
-        this.last = item.prev;
-      }
-    }
-  }
-
-  evict() {
-    const item = this.first;
-
-    delete this.items[item.key];
-    this.first = item.next;
-    this.first.prev = null;
-    this.size--;
-  }
-
-  get(key: string): TValue | undefined {
-    let result: TValue;
-
-    if (this.has(key)) {
-      const item = this.items[key];
-
-      if (this.ttl > 0 && item.expiry <= new Date().getTime()) {
-        this.delete(key);
-      } else {
-        result = item.value;
-        this.set(key, result, true);
-      }
+    if (store.first === item) {
+      store.first = item.next;
     }
 
-    return result;
+    if (store.last === item) {
+      store.last = item.prev;
+    }
   }
+}
 
-  keys() {
-    return Object.keys(this.items);
-  }
+function evict<T>(store: Store<T>) {
+  const item = store.first;
 
-  set(key: string, value: TValue, bypass = false) {
-    let item: Item<TValue>;
+  store.onDispose(item.key, item.value);
 
-    if (bypass || this.has(key)) {
-      item = this.items[key];
-      item.value = value;
+  delete store.items[item.key];
+  store.first = item.next;
+  store.first.prev = null;
+  store.size--;
+}
 
-      if (bypass === false) {
-        item.expiry = this.ttl > 0 ? Date.now() + this.ttl : this.ttl;
-      }
+function get<T>(store: Store<T>, key: string): T | undefined {
+  let result: T;
 
-      if (this.last !== item) {
-        const last = this.last,
-          next = item.next,
-          prev = item.prev;
+  if (has(store, key)) {
+    const item = store.items[key];
 
-        if (this.first === item) {
-          this.first = item.next;
-        }
-
-        item.next = null;
-        item.prev = this.last;
-        last.next = item;
-
-        if (prev !== null) {
-          prev.next = next;
-        }
-
-        if (next !== null) {
-          next.prev = prev;
-        }
-      }
+    if (store.ttl > 0 && isStale(item)) {
+      del(store, key);
     } else {
-      if (this.max > 0 && this.size === this.max) {
-        this.evict();
-      }
+      result = item.value;
+      set(store, key, result, true);
+    }
+  }
 
-      item = this.items[key] = {
-        expiry: this.ttl > 0 ? Date.now() + this.ttl : this.ttl,
-        key: key,
-        prev: this.last,
-        next: null,
-        value,
-      };
+  return result;
+}
 
-      if (++this.size === 1) {
-        this.first = item;
-      } else {
-        this.last.next = item;
-      }
+function keys<T>(store: Store<T>) {
+  return Object.keys(store.items);
+}
+
+function set<T>(store: Store<T>, key: string, value: T, bypass = false) {
+  let item: Item<T>;
+
+  if (bypass || has(store, key)) {
+    item = store.items[key];
+    item.value = value;
+
+    if (bypass === false) {
+      item.expiry = store.ttl > 0 ? Date.now() + store.ttl : store.ttl;
     }
 
-    this.last = item;
+    if (store.last !== item) {
+      const last = store.last,
+        next = item.next,
+        prev = item.prev;
+
+      if (store.first === item) {
+        store.first = item.next;
+      }
+
+      item.next = null;
+      item.prev = store.last;
+      last.next = item;
+
+      if (prev !== null) {
+        prev.next = next;
+      }
+
+      if (next !== null) {
+        next.prev = prev;
+      }
+    }
+  } else {
+    if (store.max > 0 && store.size === store.max) {
+      evict(store);
+    }
+
+    item = store.items[key] = {
+      expiry: store.ttl > 0 ? Date.now() + store.ttl : store.ttl,
+      key: key,
+      prev: store.last,
+      next: null,
+      value,
+    };
+
+    if (++store.size === 1) {
+      store.first = item;
+    } else {
+      store.last.next = item;
+    }
   }
+
+  store.last = item;
+}
+
+function prune<T>(store: Store<T>): void {
+  const list = keys(store);
+
+  for (const key of list) {
+    get(store, key);
+  }
+}
+
+export function createLRU<TValue>({
+  max = 0,
+  ttl = 0,
+  onDispose = () => {},
+}: {
+  max?: number;
+  ttl?: number;
+  onDispose?: (key: string, value: TValue) => void;
+}): LRU<TValue> {
+  if (isNaN(max) || max < 0) {
+    throw new TypeError("Invalid max value");
+  }
+
+  if (isNaN(ttl) || ttl < 0) {
+    throw new TypeError("Invalid ttl value");
+  }
+
+  const store: Store<TValue> = {
+    max,
+    ttl,
+    first: null,
+    last: null,
+    items: {},
+    size: 0,
+    onDispose,
+  };
+
+  return {
+    set(key: string, value: TValue, bypass?: boolean) {
+      return set(store, key, value, bypass);
+    },
+    get(key: string) {
+      return get(store, key);
+    },
+    delete(key: string) {
+      return del(store, key);
+    },
+    has(key: string) {
+      return has(store, key);
+    },
+    keys() {
+      return keys(store);
+    },
+    evict() {
+      return evict(store);
+    },
+    prune() {
+      return prune(store);
+    },
+    clear() {
+      return clear(store);
+    },
+    size() {
+      return store.size;
+    }
+  };
 }
